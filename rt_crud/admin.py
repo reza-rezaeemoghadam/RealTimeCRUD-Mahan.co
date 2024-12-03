@@ -1,3 +1,8 @@
+# Importing django modules
 from django.contrib import admin
 
-# Register your models here.
+# Importing cusotm models
+from rt_crud.models import Product
+
+# Register admin models.
+admin.site.register(Product)
