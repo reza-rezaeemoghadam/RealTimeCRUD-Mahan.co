@@ -25,12 +25,19 @@ SECRET_KEY = 'django-insecure-6sq=9@9ykg^1$$&!*hq6(#0q6$w@ejegu+2qvx@u#zl%4=(3^-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['http://127.0.0.1:5500/', '127.0.0.1','http://127.0.0.1:5000/']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    # Third-party apps
+    'rest_framework',
+    'drf_yasg',
+    'channels',
+    'corsheaders',
+    'daphne',
+
     # Built-in apps
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,18 +46,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Third-party apps
-    'rest_framework',
-    'drf_yasg',
-    'channels',
-    'corsheaders',
-    
     # Custom apps
     'rt_crud',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # Add this line at the top
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Add WhiteNoise middleware here
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -88,11 +91,14 @@ CHANNEL_LAYERS = {
 }
 
 # Cors configuration
+# CORS_ALLOWED_ORIGINS =True
 CORS_ALLOWED_ORIGINS = [
     # "http://192.168.1.141:8000",  # Example IP address
     # "http://192.168.1.143:3000",       # Example for localhost
     "http://192.168.1.143:3000",       # Example for localhost
-    "http://127.0.0.1:8000",       # Example for localhost
+    # "http://127.0.0.1:8000",       # Example for localhost
+    "http://127.0.0.1:5501",       # Example for localhost
+    "http://127.0.0.1:5000",       # Example for localhost
 ]
 
 CORS_ALLOW_HEADERS = [ 'content-type', ] 
@@ -163,8 +169,55 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Ensure this is the correct path to your static files
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Log configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': './channels.log',
+            'formatter': 'verbose',
+        },
+        'websocket': {
+            'level': 'INFO',
+            'class': 'src.log_handler.WebSocketLogHandler',
+            'formatter':'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False
+        },
+        'rt_crud':{
+            'handlers': ['websocket', 'file'],
+            'level': 'INFO',
+            'propagate': False
+        },
+        'consumers': { 
+            'handlers': ['file'], 
+            'level': 'DEBUG', 
+            'propagate': False, 
+        },
+    },
+}
+
+
+
