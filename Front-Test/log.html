@@ -1,0 +1,32 @@
+<!-- log_view.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Logs</title>
+    <script>
+        const logSocket = new WebSocket('ws://127.0.0.1:8000/ws/logs/');
+
+        logSocket.onopen = function() {
+            console.log('connected')
+        }
+
+        logSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log(data); // Check the structure of the incoming data
+            const logElement = document.createElement('div');
+            logElement.textContent = data.message; // Change this if the key is different
+            document.getElementById('log-container').appendChild(logElement);
+        };
+
+
+        logSocket.onclose = function(e) {
+            console.error('Log socket closed unexpectedly');
+        };
+    </script>
+</head>
+<body>
+    <h1>Real-Time Logs</h1>
+    <div id="log-container"></div>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Product Management</title>
+    <style>
+        .status-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            padding: 5px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Product Management</h1>
+    <form id="product-form">
+        <label for="id">ID:</label>
+        <input type="text" id="id" name="id" required><br><br>
+
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" required><br><br>
+
+        <div>
+            <button type="button" id="delete-btn">Delete</button>
+            <button type="button" id="write-btn">Write</button>
+            <button type="button" id="read-btn">Read</button>
+            <button type="button" id="edit-btn">Edit</button>
+        </div>
+    </form>
+    
+    <div class="status-bar" id="status-bar">Status: Not connected</div>
+
+    <script>
+        // WebSocket connection
+        const statusBar = document.getElementById('status-bar');
+        const socket = new WebSocket('ws://127.0.0.1:8000/ws/product/1/');
+
+        socket.onopen = () => {
+            statusBar.textContent = 'Status: Connected';
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const message = data.message;
+            console.log('data:',data)
+            console.log('message:',message)
+            console.log('payload:',data.payload)
+            statusBar.textContent = `Status: ${data.user} ${data.action}`;
+            if (data.product) {
+                console.log('Product data:', data.payload);
+            }
+            if (data.errors) {
+                console.log('Errors:', data.errors);
+            }
+        };
+
+        socket.onclose = () => {
+            statusBar.textContent = 'Status: Disconnected';
+        };
+
+        socket.onerror = (error) => {
+            statusBar.textContent = `Status: Error - ${error}`;
+        };
+
+        // Button click handlers
+        document.getElementById('delete-btn').onclick = () => handleAction('delete');
+        document.getElementById('write-btn').onclick = () => handleAction('create');
+        document.getElementById('read-btn').onclick = () => handleAction('read');
+        document.getElementById('edit-btn').onclick = () => handleAction('update');
+
+        function handleAction(action) {
+            const id = document.getElementById('id').value;
+            const name = document.getElementById('name').value;
+            const quantity = document.getElementById('quantity').value;
+            const payload = {id, name, quantity}
+            const message = JSON.stringify({ action, payload});
+
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(message);
+            } else {
+                statusBar.textContent = 'Status: Unable to perform action, not connected';
+            }
+        }
+    </script>
+</body>
+</html>
