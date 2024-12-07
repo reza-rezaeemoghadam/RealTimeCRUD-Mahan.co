@@ -13,6 +13,29 @@
             padding: 5px;
             overflow-y: auto;
         }
+        /* Modal styles */
+        #permission-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
     </style>
 </head>
 <body>
@@ -37,22 +60,47 @@
     
     <div class="status-bar" id="status-bar">Status: Not connected</div>
 
+    <!-- Permission Request Modal -->
+    <div id="modal-overlay"></div>
+    <div id="permission-modal">
+        <h2>Permission Request</h2>
+        <p id="permission-message"></p>
+        <button id="accept-btn">Accept</button>
+        <button id="deny-btn">Deny</button>
+        <button id="close-btn">Close</button>
+    </div>
+
     <script>
         // WebSocket connection
         const statusBar = document.getElementById('status-bar');
         const socket = new WebSocket('ws://127.0.0.1:8000/ws/product/1/');
-
+        
         socket.onopen = () => {
             statusBar.textContent = 'Status: Connected';
         };
-
+        
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             const message = data.message;
-            console.log('data:',data)
-            console.log('message:',message)
-            console.log('payload:',data.payload)
-            statusBar.textContent = `Status: ${data.user} ${data.action}`;
+            console.log(data.users)
+            // Clear the status bar before updating
+            statusBar.innerHTML = 'Status:<br>';
+    
+            // Display users in the status bar
+            if (data.users) {
+                for (const user in data.users) {
+                    if (data.users.hasOwnProperty(user)) {
+                        statusBar.innerHTML += `${user}: ${data.users[user]}<br>`;
+                    }
+                }
+            }
+            // Handle permission request            
+            for (const user in data.users) {
+                if (data.users[user] === 'permission_request') {
+                    showPermissionRequestPopup(user, data.action);
+                }
+            }
+    
             if (data.product) {
                 console.log('Product data:', data.payload);
             }
@@ -60,34 +108,69 @@
                 console.log('Errors:', data.errors);
             }
         };
-
+        
         socket.onclose = () => {
             statusBar.textContent = 'Status: Disconnected';
         };
-
+        
         socket.onerror = (error) => {
             statusBar.textContent = `Status: Error - ${error}`;
         };
-
+        
         // Button click handlers
         document.getElementById('delete-btn').onclick = () => handleAction('delete');
         document.getElementById('write-btn').onclick = () => handleAction('create');
         document.getElementById('read-btn').onclick = () => handleAction('read');
-        document.getElementById('edit-btn').onclick = () => handleAction('update');
-
+        document.getElementById('edit-btn').onclick = () => handleAction('update_req');
+        
         function handleAction(action) {
             const id = document.getElementById('id').value;
             const name = document.getElementById('name').value;
             const quantity = document.getElementById('quantity').value;
-            const payload = {id, name, quantity}
-            const message = JSON.stringify({ action, payload});
-
+            const payload = { id, name, quantity };
+            const message = JSON.stringify({ action, payload });
+            console.log(message)
             if (socket.readyState === WebSocket.OPEN) {
                 socket.send(message);
             } else {
                 statusBar.textContent = 'Status: Unable to perform action, not connected';
             }
         }
-    </script>
+    
+        function showPermissionRequestPopup(requestingUser, action) {
+            const id = document.getElementById('id').value;
+            const name = document.getElementById('name').value;
+            const quantity = document.getElementById('quantity').value;
+            let payload = { id, name, quantity };
+
+            const modal = document.getElementById('permission-modal');
+            const overlay = document.getElementById('modal-overlay');
+            const message = document.getElementById('permission-message');
+            message.textContent = `${requestingUser} is requesting to edit product ${id}. Do you want to allow this?`;
+            
+            modal.style.display = 'block';
+            overlay.style.display = 'block';
+    
+            document.getElementById('accept-btn').onclick = () => {
+                const message = JSON.stringify({action:'permission_granted',payload})
+                console.log(message)
+                socket.send(message);
+                modal.style.display = 'none';
+                overlay.style.display = 'none';
+            };
+    
+            document.getElementById('deny-btn').onclick = () => {
+                const response = { action: 'permission_denied', productId: productId, requestingUser: requestingUser };
+                socket.send(JSON.stringify(response));
+                modal.style.display = 'none';
+                overlay.style.display = 'none';
+            };
+    
+            document.getElementById('close-btn').onclick = () => {
+                modal.style.display = 'none';
+                overlay.style.display = 'none';
+            };
+        }
+    </script>    
 </body>
 </html>
